@@ -13,7 +13,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Inter", "Segoe UI", Roboto, sans-serif; }
         body { min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 2rem 1.5rem; background: #f4f7fc; position: relative; }
         body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 20% 50%, rgba(26, 115, 232, 0.08) 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, rgba(0, 200, 150, 0.06) 0%, transparent 60%), linear-gradient(145deg, #f0f4f8 0%, #e8edf3 100%); z-index: 0; }
-        
+        a
         /* ===== TOAST NOTIFICATIONS ===== */
         .toast-container {
             position: fixed;
@@ -377,7 +377,6 @@
     <div class="loading-progress"><div class="loading-progress-bar"></div></div>
 </div>
 
-<!-- ===== MAIN CARD ===== -->
 <div class="card" id="mainCard">
     <div class="header">
         <div class="header-left">
@@ -713,6 +712,13 @@
                     <option value="December">December</option>
                 </select>
             </div>
+            <!-- NEW: Personnel In-Charge Filter -->
+            <div class="filter-group">
+                <label for="filterPIC">Personnel:</label>
+                <select id="filterPIC">
+                    <option value="all">All Personnel</option>
+                </select>
+            </div>
             <button class="filter-btn" id="applyRecordFilter"><i class="fas fa-filter"></i> Apply</button>
             <button class="filter-btn reset-btn" id="resetRecordFilter"><i class="fas fa-undo"></i> Reset</button>
         </div>
@@ -892,7 +898,7 @@
     // ============================================
     // CONFIGURATION
     // ============================================
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzC4lST4LEKp8HstTrNhCZ-eA2rrlE0xg8u27pxNN0uXy38DBzKc18b1OXB9VEYLo11-Q/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGh_mlugJe5IM1anrfnPvdp95lsZdR-WF0kl1c17F_JV0lbzXP1WJCqv2fH_zY0LHI0Q/exec';
     const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1ikMuQVy3MBiuK6KuAEGBJ2sod-jlzLwCqsTtenORczg/edit?usp=sharing';
 
     // ============================================
@@ -907,16 +913,19 @@
             if (result.result === 'success' && result.names) {
                 picNames = result.names;
                 populatePicDropdowns();
+                updatePICFilters();
                 return picNames;
             } else {
                 picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
                 populatePicDropdowns();
+                updatePICFilters();
                 return picNames;
             }
         } catch (error) {
             console.error('Error loading PIC names:', error);
             picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
             populatePicDropdowns();
+            updatePICFilters();
             return picNames;
         }
     }
@@ -954,6 +963,43 @@
                 select.value = currentValue;
             }
         });
+    }
+
+    function updatePICFilters() {
+        // Update filter in records modal
+        const filterPIC = document.getElementById('filterPIC');
+        if (filterPIC) {
+            const currentValue = filterPIC.value;
+            filterPIC.innerHTML = '<option value="all">All Personnel</option>';
+            picNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                filterPIC.appendChild(opt);
+            });
+            if (currentValue && picNames.includes(currentValue)) {
+                filterPIC.value = currentValue;
+            } else {
+                filterPIC.value = 'all';
+            }
+        }
+        // Update chart PIC filter
+        const chartPIC = document.getElementById('chartPICFilter');
+        if (chartPIC) {
+            const currentValue = chartPIC.value;
+            chartPIC.innerHTML = '<option value="all">All Personnel</option>';
+            picNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                chartPIC.appendChild(opt);
+            });
+            if (currentValue && picNames.includes(currentValue)) {
+                chartPIC.value = currentValue;
+            } else {
+                chartPIC.value = 'all';
+            }
+        }
     }
 
     function refreshPicData() { loadPICNamesFromSheet(); }
@@ -995,6 +1041,7 @@
         }
         picNames.push(name);
         populatePicDropdowns();
+        updatePICFilters();
         await savePICNamesToSheet(picNames);
         const targetSelect = document.getElementById(currentAddTarget + '_pic');
         if (targetSelect) { targetSelect.value = name; }
@@ -1024,6 +1071,7 @@
         if (index > -1) {
             picNames.splice(index, 1);
             populatePicDropdowns();
+            updatePICFilters();
             await savePICNamesToSheet(picNames);
             showToast('🗑️ Removed', `"${selectedName}" removed from Personnel In-Charge list.`, 'info');
         }
@@ -1452,6 +1500,7 @@
     const filterPSGC = document.getElementById('filterPSGC');
     const filterProvince = document.getElementById('filterProvince');
     const filterReportingMonth = document.getElementById('filterReportingMonth');
+    const filterPIC = document.getElementById('filterPIC');
 
     function closeRecordsModal() {
         recordsModal.classList.remove('active');
@@ -1479,6 +1528,7 @@
         const psgcFilter = filterPSGC.value.trim().toLowerCase();
         const provinceFilter = filterProvince.value;
         const monthFilter = filterReportingMonth.value;
+        const picFilter = filterPIC.value;
 
         filteredRecords = allRecords.filter(record => {
             if (psgcFilter) {
@@ -1490,6 +1540,9 @@
             }
             if (monthFilter !== 'all') {
                 if ((record['Reporting Month'] || '') !== monthFilter) return false;
+            }
+            if (picFilter !== 'all') {
+                if ((record['Personnel In-Charge'] || '') !== picFilter) return false;
             }
             return true;
         });
@@ -1505,6 +1558,7 @@
         filterPSGC.value = '';
         filterProvince.value = 'all';
         filterReportingMonth.value = 'all';
+        filterPIC.value = 'all';
         applyRecordFilters();
     });
 
@@ -1813,7 +1867,7 @@
         document.body.style.overflow = 'hidden';
         document.getElementById('chartModalTitle').textContent = currentFormType + ' Analytics Dashboard';
         updateCategoryFilter();
-        updatePICFilter();
+        updatePICFilters(); // ensure PIC filter is populated
         loadChartData();
     }
 
@@ -1845,19 +1899,6 @@
             const opt = document.createElement('option');
             opt.value = cat;
             opt.textContent = cat;
-            select.appendChild(opt);
-        });
-    }
-
-    function updatePICFilter() {
-        const select = document.getElementById('chartPICFilter');
-        if (!select) return;
-        select.innerHTML = '<option value="all">All Personnel</option>';
-        const picList = picNames.length > 0 ? picNames : ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
-        picList.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
             select.appendChild(opt);
         });
     }
@@ -2091,7 +2132,8 @@
         document.getElementById('pdpfp_region').value = 'Region 6';
         document.getElementById('chartYearFilter').value = new Date().getFullYear();
 
-        loadPICNamesFromSheet();  
+        loadPICNamesFromSheet();
+        showToast('✅ Ready', 'System loaded successfully!', 'success', 2000);
     });
 
     setTimeout(function() {
