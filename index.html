@@ -1604,7 +1604,7 @@
         if (e.key === 'Escape') closeRecordsModal();
     });
 
-    function applyRecordFilters() {
+    async function applyRecordFilters() {
         const psgcFilter = filterPSGC.value.trim().toLowerCase();
         const provinceFilter = filterProvince.value;
         const monthFilter = filterReportingMonth.value;
@@ -1627,7 +1627,7 @@
             return true;
         });
 
-        renderTable(filteredRecords);
+        await renderTable(filteredRecords);
         displayCount.textContent = filteredRecords.length;
         footerTotalCount.textContent = filteredRecords.length;
         editingRowNumber = null;
@@ -1652,7 +1652,7 @@
                 filteredRecords = [...allRecords];
                 totalCount.textContent = allRecords.length;
                 footerTotalCount.textContent = allRecords.length;
-                renderTable(allRecords);
+                await renderTable(allRecords);
                 displayCount.textContent = allRecords.length;
                 editingRowNumber = null;
             } else {
@@ -1664,7 +1664,16 @@
     }
 
     // ===== RENDER TABLE WITH EDIT/DELETE BUTTONS =====
-    function renderTable(records) {
+    async function renderTable(records) {
+        // Ensure picNames is populated before rendering
+        if (picNames.length === 0) {
+            await loadPICNamesFromSheet();
+        }
+        // Fallback if still empty
+        if (picNames.length === 0) {
+            picNames = ['Juan Dela Cruz', 'Maria Santos', 'Jose Rizal', 'Andres Bonifacio', 'Gabriela Silang'];
+        }
+
         if (!records || records.length === 0) {
             modalBodyContent.innerHTML = `<table><thead><tr><th>#</th><th class="col-psgc">PSGC</th><th class="col-region">Region</th><th class="col-province">Province</th><th class="col-city">City/Municipality</th><th class="col-query">Query Details</th><th class="col-assistance">Assistance Type</th><th class="col-category">TA Category</th><th class="col-planned">Planned/Requested</th><th class="col-date">Date Conducted</th><th class="col-month">Reporting Month</th><th class="col-personnel">Personnel</th><th class="col-actions">Actions</th></tr></thead><tbody><tr class="no-records"><td colspan="13">📭 No records found for ${currentFormType}.</td></tr></tbody></table>`;
             displayCount.textContent = '0';
@@ -1713,7 +1722,8 @@
                             <select name="${fieldName}" data-key="${col.key}" style="width:100%; min-width:80px; max-width:120px; padding:0.15rem 0.3rem; border:2px solid #f59e0b; border-radius:4px; font-size:0.6rem; background:white; font-family:'Inter',sans-serif; cursor:pointer; appearance:auto; -webkit-appearance:auto; z-index:1000; position:relative;">
                                 <option value="">Select...</option>`;
                         picNames.forEach(name => {
-                            html += `<option value="${name}" ${name === value ? 'selected' : ''}>${name}</option>`;
+                            const selected = name === value ? 'selected' : '';
+                            html += `<option value="${name}" ${selected}>${name}</option>`;
                         });
                         html += `</select></td>`;
                     } else if (col.key === 'Planned / Requested') {
@@ -2212,6 +2222,8 @@
         document.getElementById('pdpfp_region').value = 'Region_06';
         document.getElementById('chartYearFilter').value = new Date().getFullYear();
 
+        // Load PIC names on startup
+        loadPICNamesFromSheet();
     });
 
     setTimeout(function() {
